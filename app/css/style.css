@@ -1,0 +1,9 @@
+.options {
+  display: flex;
+  height: 50px;
+}
+
+.options button {
+  color: blue;
+  height: 30px;
+}
