@@ -1,12 +1,13 @@
-import express from "express";
-import path from "path";
-import http from "http";
-import { Server, Socket } from "socket.io";
+const express = require("express");
+const path = require("path");
+const http = require("http");
+const { Server, Socket } = require("socket.io");
 
 const port = 3000;
 
 class App {
   constructor(port) {
+    this.clients = {};
     this.port = port;
     const app = express();
     app.use(express.static(path.join(__dirname, "../client")));
@@ -16,6 +17,7 @@ class App {
     this.io = new Server(this.server);
 
     this.io.on("connection", (socket) => {
+      console.log("SOCKET", socket);
       console.log(socket.constructor.name);
       this.clients[socket.id] = {};
       console.log(this.clients);
@@ -34,8 +36,9 @@ class App {
       socket.on("update", (message) => {
         if (this.clients[socket.id]) {
           this.clients[socket.id].t = message.t; //client timestamp
-          this.clients[socket.id].p = message.p; //position
-          this.clients[socket.id].r = message.r; //rotation
+          this.clients[socket.id].position = message.p; //position
+          this.clients[socket.id].rotation = message.r; //rotation
+          this.clients[socket.id].animationIndex = message.i; //rotation
         }
       });
     });

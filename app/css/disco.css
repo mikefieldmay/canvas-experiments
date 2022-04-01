@@ -1,0 +1,10 @@
+#pingStats {
+  position: absolute;
+  top: 60px;
+  left: 4px;
+  width: 400px;
+  height: 400px;
+  pointer-events: none;
+  color: white;
+  font-family: monospace;
+}

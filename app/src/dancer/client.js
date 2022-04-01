@@ -2,6 +2,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Stats from "three/examples/jsm/libs/stats.module";
+import { io } from "socket.io-client";
+
+import "../../css/disco.css";
 
 import { Dancer } from "./dancer";
 // import { GUI } from "three/examples/jsm/libs/dat.gui.module";
@@ -36,14 +39,83 @@ export const init = () => {
   let lastAction;
   const gltfLoader = new GLTFLoader();
   let dancer = new Dancer(0, 0, -4, scene);
-  let dancerTwo = new Dancer(-3, 0, 0.9, scene);
   let pressed = {};
   var dir = new THREE.Vector3();
+  let myId = "";
+  let timestamp = 0;
+  const clientDancers = {};
+  const socket = io();
 
   const sceneMeshes = [];
 
-  dancer.loadModel();
-  dancerTwo.loadModel();
+  socket.on("connect", function () {
+    console.log("connect");
+  });
+  socket.on("disconnect", function (message) {
+    console.log("disconnect " + message);
+  });
+  socket.on("id", (id) => {
+    clientDancers[id] = dancer;
+    clientDancers[id].name = id;
+    myId = id;
+    setInterval(() => {
+      socket.emit("update", {
+        t: Date.now(),
+        p: dancer.ready ? dancer.model.position : undefined,
+        r: dancer.ready ? dancer.model.rotation : undefined,
+        i: dancer.activeActionIndex
+      });
+    }, 1);
+  });
+  socket.on("clients", (clients) => {
+    let pingStatsHtml = "Socket Ping Stats<br/><br/>";
+    Object.keys(clients).forEach((p) => {
+      timestamp = Date.now();
+      pingStatsHtml += p + " " + (timestamp - clients[p].t) + "ms<br/>";
+      if (!clientDancers[p]) {
+        clientDancers[p] = new Dancer(0, 0, 0.5, scene);
+        clientDancers[p].name = p;
+      }
+      if (clientDancers[p].name !== myId && clientDancers[p].ready) {
+        console.log(
+          "this is from the other client",
+          clientDancers[p].model.position,
+          clients[p]
+        );
+      }
+
+      const readyToMove =
+        clientDancers[p].name !== myId &&
+        clientDancers[p].ready &&
+        clients[p].position &&
+        clients[p].rotation;
+
+      if (readyToMove) {
+        var delta = clock.getDelta();
+        clientDancers[p].update(delta);
+
+        clientDancers[p].updatePosition(
+          clients[p].position.x,
+          clients[p].position.y,
+          clients[p].position.z
+        );
+        clientDancers[p].updateRotation(
+          clients[p].rotation._x,
+          clients[p].rotation._y,
+          clients[p].rotation._z
+        );
+        clientDancers[p].setAction(
+          clientDancers[p].animationActions[clients[p].animationIndex]
+        );
+        // render();
+      }
+      // renderer.render(scene, camera);
+    });
+    document.getElementById("pingStats").innerHTML = pingStatsHtml;
+  });
+  socket.on("removeClient", (id) => {
+    scene.remove(scene.getObjectByName(id));
+  });
 
   const planeGeometry = new THREE.PlaneGeometry(10, 10);
   const texture = new THREE.TextureLoader().load("public/grid.png");
@@ -83,15 +155,17 @@ export const init = () => {
 
     controls.update();
 
-    if (dancer.ready && dancerTwo.ready) {
+    if (dancer.ready) {
       var delta = clock.getDelta();
-      dancer.update(delta);
-      dancerTwo.update(delta);
+      Object.keys(clientDancers).forEach((key) => {
+        clientDancers[key].update(delta);
+      });
+      // clientDancers.forEach((dancer) => {
+      //   console.log(dancer);
+      // });
       // ;(model as any).position.x += 0.001
-      // console.log(model)
       var moveDistance = 0.05; // n pixels per second
       // console.log(model.getWorldDirection())
-      // console.log(model.rotation.y)
 
       // move forwards, backwards, left, or right
       switch (true) {
@@ -145,6 +219,12 @@ export const init = () => {
 
           break;
       }
+      // socket.emit("update", {
+      //   t: Date.now(),
+      //   p: dancer.ready ? dancer.model.position : undefined,
+      //   r: dancer.ready ? dancer.model.rotation : undefined,
+      //   i: dancer.activeActionIndex
+      // });
     }
     render();
 
