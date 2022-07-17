@@ -3,7 +3,7 @@ import { init as threeDInit } from "./dancer/client";
 import "../css/style.css";
 
 window.onload = async () => {
-  linkInit();
+  threeDInit();
   const linkButton = document.getElementById("link");
   linkButton.onclick = () => {
     removeCanvas();

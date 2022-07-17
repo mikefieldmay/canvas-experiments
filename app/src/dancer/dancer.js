@@ -31,7 +31,16 @@ export class Dancer {
   async loadModel() {
     const gltf = await this.loadGltfModel("public/girl.glb");
     gltf.scene.scale.set(1.5, 1.5, 1.5);
+
+    gltf.scene.traverse(function (node) {
+      if (node.isMesh) {
+        node.castShadow = true;
+      }
+    });
+
     this.model = gltf.scene;
+    this.model.castShadow = true;
+    this.model.receiveShadow = true;
     this.mixer = new THREE.AnimationMixer(this.model);
     const animationAction = this.mixer.clipAction(gltf.animations[0]);
     this.animationActions.push(animationAction);

@@ -17,8 +17,17 @@ export const init = () => {
 
   // w
 
-  let light = new THREE.HemisphereLight(0xffffff, 0x444444);
-  light.position.set(0, 200, 0);
+  let light = new THREE.DirectionalLight(0xffffff, 1);
+  console.log(light.rotation);
+  // light.position.set(0, 400, 0);
+
+  const spotlight = new THREE.SpotLight(0xffffff, 1);
+  spotlight.position.set(0, 4, 0);
+  spotlight.rotation.set((2 * Math.PI) / 180, 0, 0);
+  spotlight.castShadow = true;
+  spotlight.shadowCameraVisible = true;
+
+  scene.add(spotlight);
   scene.add(light);
 
   const camera = new THREE.PerspectiveCamera(70, 800 / 600, 0.01, 100);
@@ -26,6 +35,7 @@ export const init = () => {
   camera.position.set(0, 4, -8);
 
   const renderer = new THREE.WebGLRenderer();
+  renderer.shadowMap.enabled = true;
   renderer.setSize(800, 600);
   document.body.appendChild(renderer.domElement);
 
@@ -45,6 +55,8 @@ export const init = () => {
   let timestamp = 0;
   const clientDancers = {};
   const socket = io();
+
+  console.log(dancer);
 
   const sceneMeshes = [];
 
@@ -117,17 +129,29 @@ export const init = () => {
     scene.remove(scene.getObjectByName(id));
   });
 
-  const planeGeometry = new THREE.PlaneGeometry(10, 10);
-  const texture = new THREE.TextureLoader().load("public/grid.png");
-  const plane = new THREE.Mesh(
-    planeGeometry,
-    new THREE.MeshPhongMaterial({ map: texture })
-  );
-  plane.rotateX(-Math.PI / 2);
-  // plane.receiveShadow = truew
-  // plane.position.set(0, 0, 4)
-  scene.add(plane);
-  sceneMeshes.push(plane);
+  gltfLoader.load("public/disco_rematerial.glb", (gltf) => {
+    console.log(gltf);
+    gltf.scene.traverse(function (node) {
+      if (node.isMesh) {
+        // node.castShadow = true;
+        node.receiveShadow = true;
+      }
+    });
+    scene.add(gltf.scene);
+    // const planeGeometry = new THREE.PlaneGeometry(10, 10);
+    // const texture = new THREE.TextureLoader().load("public/grid.png");
+    // const material = new THREE.MeshPhongMaterial({ map: texture });
+
+    // const plane = new THREE.Mesh(planeGeometry, material);
+    // plane.receiveShadow = true;
+    // plane.castShadow = true;
+
+    // plane.rotateX(-Math.PI / 2);
+    // plane.receiveShadow = true
+    // plane.position.set(0, 0, 4)
+    // scene.add(plane);
+    // sceneMeshes.push(plane);
+  });
 
   window.addEventListener("resize", onWindowResize, false);
   function onWindowResize() {
@@ -219,6 +243,9 @@ export const init = () => {
 
           break;
       }
+      console.log("target", controls.target);
+      controls.target = dancer.model.position;
+      controls.update();
       // socket.emit("update", {
       //   t: Date.now(),
       //   p: dancer.ready ? dancer.model.position : undefined,
